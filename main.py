@@ -15,8 +15,13 @@ PLAYER_R_LOST_EVENT = pygame.USEREVENT + 2
 class Ball(pygame.Rect):
   def __init__(self, left, top, width, height, color):
     super().__init__(left, top, width, height)
-
+    self._start_left = left
+    self._start_top = top
     self.color = color
+
+  def restore_position(self):
+    self.move_ip(self._start_left - self.x, self._start_top - self.y)
+
 
 class Player:
   def __init__(self, paddle, textbox) -> None:
@@ -50,6 +55,11 @@ class Paddle(pygame.Rect):
   def __init__(self, left, top, width, height, color):
     super().__init__(left, top, width, height)
     self.color = color
+    self._start_left = left
+    self._start_top = top
+
+  def restore_position(self):
+    self.move_ip(self._start_left - self.x, self._start_top - self.y)
 
 # Left paddle
 def handle_mov_player_left(keys_pressed, paddle_L):
@@ -103,7 +113,7 @@ def draw(ball, player_L, player_R):
   player_L.draw_paddle(WIN)
   player_L.draw_score(WIN)
   player_R.draw_paddle(WIN)
-  # player_R.draw_score(WIN)
+  player_R.draw_score(WIN)
 
 def initialize():
   BALL_LENGTH=20
@@ -135,10 +145,16 @@ def main():
         running=False
       if event.type == PLAYER_L_LOST_EVENT:
         player_R.score += 1
+        ball.restore_position()
+        player_L.restore_position()
+        player_R.restore_position()
         # ball,paddle_L,paddle_R=initialize()
       elif event.type == PLAYER_R_LOST_EVENT:
+        ball.restore_position()
         player_L.score += 1
-        # ball,paddle_L,paddle_R=initialize()
+        ball.restore_position()
+        player_L.paddle.restore_position()
+        player_R.paddle.restore_position()
 
 
     keys_pressed=pygame.key.get_pressed()
