@@ -1,12 +1,12 @@
 import pygame
 import color_constants
-import random
-import sys
+from pathlib import Path
 
 pygame.init()
 SCREEN_WIDTH, SCREEN_HEIGHT = 900,600
 WIN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 SCORE_FONT = pygame.font.SysFont("comicsans", 50)
+pygame.mixer
 VY = 5
 VX = 5
 PLAYER_L_LOST_EVENT = pygame.USEREVENT + 1
@@ -26,10 +26,11 @@ class Ball(pygame.Rect):
 
 
 class Player:
-  def __init__(self, paddle, textbox_x) -> None:
+  def __init__(self, paddle, textbox_x, path_to_sound) -> None:
     self.paddle=paddle
     self.score=0
     self.textbox = Textbox(SCORE_FONT, paddle.color, "", textbox_x, 20)
+    self.sound = pygame.mixer.Sound(path_to_sound)
 
   def draw_paddle(self, screen):
     pygame.draw.rect(screen, self.paddle.color, self.paddle)
@@ -79,7 +80,7 @@ def handle_mov_player_right(keys_pressed, paddle_R):
     paddle_R.move_ip(0,VY)
 
 ball_VY, ball_VX = 2,2
-def handle_mov_ball(ball, paddle_L, paddle_R):
+def handle_mov_ball(ball, player_L, player_R):
   global ball_VX, ball_VY
   if ball.x + ball.width + ball_VX > SCREEN_WIDTH:
     # Game lost
@@ -89,16 +90,18 @@ def handle_mov_ball(ball, paddle_L, paddle_R):
 
 
   # Rebouncing with player right
-  if ball.colliderect(paddle_R):
-    intersect_rectangle = ball.clip(paddle_R)
+  if ball.colliderect(player_R.paddle):
+    player_R.sound.play()
+    intersect_rectangle = ball.clip(player_R.paddle)
     if intersect_rectangle.width > intersect_rectangle.height:
       ball_VY *= -1
     else:
       ball_VX *= -1
 
   # Rebouncing with player left
-  elif ball.colliderect(paddle_L):
-    intersect_rectangle = ball.clip(paddle_L)
+  elif ball.colliderect(player_L.paddle):
+    player_L.sound.play()
+    intersect_rectangle = ball.clip(player_L.paddle)
     if intersect_rectangle.width > intersect_rectangle.height:
       ball_VY *= -1
     else:
@@ -127,8 +130,8 @@ def main():
   ball = Ball(color_constants.WHITE)
   paddle_L = Paddle( color_constants.WHITE, PLAYER_START_X, PLAYER_START_Y)
   paddle_R = Paddle( color_constants.WHITE, SCREEN_WIDTH - PLAYER_START_X - Paddle.WIDTH, PLAYER_START_Y)
-  player_L = Player(paddle_L, SCREEN_WIDTH // 4)
-  player_R = Player(paddle_R, SCREEN_WIDTH *3 // 4)
+  player_L = Player(paddle_L, SCREEN_WIDTH // 4, str(Path("assets") / '4390__noisecollector__pongblipf-4.wav'))
+  player_R = Player(paddle_R, SCREEN_WIDTH *3 // 4, str(Path("assets") / '4391__noisecollector__pongblipf-5.wav'))
   while running:
     clock.tick(FPS)
 
@@ -151,7 +154,7 @@ def main():
     keys_pressed=pygame.key.get_pressed()
     handle_mov_player_left(keys_pressed, paddle_L)
     handle_mov_player_right(keys_pressed, paddle_R)
-    handle_mov_ball(ball, paddle_L, paddle_R)
+    handle_mov_ball(ball, player_L, player_R)
 
 
 
