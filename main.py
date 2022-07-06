@@ -6,14 +6,45 @@ import sys
 pygame.init()
 WIDTH, HEIGHT = 900,600
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+SCORE_FONT = pygame.font.SysFont("comicsans", 50)
 VY = 5
 VX = 5
-GAME_OVER_EVENT = pygame.USEREVENT + 1
+PLAYER_L_LOST_EVENT = pygame.USEREVENT + 1
+PLAYER_R_LOST_EVENT = pygame.USEREVENT + 2
 
 class Ball(pygame.Rect):
   def __init__(self, left, top, width, height, color):
     super().__init__(left, top, width, height)
+
     self.color = color
+
+class Player:
+  def __init__(self, paddle, textbox) -> None:
+    self.paddle=paddle
+    self.score=0
+    self.textbox = textbox
+
+  def draw_paddle(self, screen):
+    pygame.draw.rect(screen, self.paddle.color, self.paddle)
+
+  def draw_score(self, screen):
+    self.textbox.text=f'{self.score}'
+    self.textbox.draw(screen)
+
+class Textbox:
+  def __init__(self, font, color, text, left, top) -> None:
+    self.font = font
+    self.color = color
+    self.text = text
+    self.left = left
+    self.top = top
+
+  def draw(self, screen):
+    rendered_text = self.font.render(f'{self.text}', 1, self.color)
+    screen.blit(rendered_text,( self.left, self.top))
+
+
+
 
 class Paddle(pygame.Rect):
   def __init__(self, left, top, width, height, color):
@@ -21,38 +52,40 @@ class Paddle(pygame.Rect):
     self.color = color
 
 # Left paddle
-def handle_mov_player_left(keys_pressed, player_L):
-  if keys_pressed[pygame.K_w] and player_L.y - VY > 0:
-    player_L.y -= VY
-  if keys_pressed[pygame.K_s] and player_L.y + player_L.height + VY < HEIGHT:
-    player_L.y += VY
+def handle_mov_player_left(keys_pressed, paddle_L):
+  if keys_pressed[pygame.K_w] and paddle_L.y - VY > 0:
+    paddle_L.y -= VY
+  if keys_pressed[pygame.K_s] and paddle_L.y + paddle_L.height + VY < HEIGHT:
+    paddle_L.y += VY
 
 # Right paddle
-def handle_mov_player_right(keys_pressed, player_R):
-  if keys_pressed[pygame.K_UP] and player_R.y - VY > 0:
-    player_R.y -= VY
-  if keys_pressed[pygame.K_DOWN] and player_R.y + player_R.height + VY < HEIGHT:
-    player_R.y += VY
+def handle_mov_player_right(keys_pressed, paddle_R):
+  if keys_pressed[pygame.K_UP] and paddle_R.y - VY > 0:
+    paddle_R.y -= VY
+  if keys_pressed[pygame.K_DOWN] and paddle_R.y + paddle_R.height + VY < HEIGHT:
+    paddle_R.y += VY
 
 ball_VY, ball_VX = 2,2
-def handle_mov_ball(ball, player_L, player_R):
+def handle_mov_ball(ball, paddle_L, paddle_R):
   global ball_VX, ball_VY
-  if ball.x + ball.width + ball_VX > WIDTH or ball.x + ball_VX < 0:
+  if ball.x + ball.width + ball_VX > WIDTH:
     # Game lost
-    pygame.event.post(pygame.event.Event(GAME_OVER_EVENT))
+    pygame.event.post(pygame.event.Event(PLAYER_R_LOST_EVENT))
+  elif  ball.x + ball_VX < 0:
+    pygame.event.post(pygame.event.Event(PLAYER_L_LOST_EVENT))
 
 
   # Rebouncing with player right
-  if ball.colliderect(player_R):
-    intersect_rectangle = ball.clip(player_R)
+  if ball.colliderect(paddle_R):
+    intersect_rectangle = ball.clip(paddle_R)
     if intersect_rectangle.width > intersect_rectangle.height:
       ball_VY *= -1
     else:
       ball_VX *= -1
 
   # Rebouncing with player left
-  elif ball.colliderect(player_L):
-    intersect_rectangle = ball.clip(player_L)
+  elif ball.colliderect(paddle_L):
+    intersect_rectangle = ball.clip(paddle_L)
     if intersect_rectangle.width > intersect_rectangle.height:
       ball_VY *= -1
     else:
@@ -67,18 +100,22 @@ def handle_mov_ball(ball, player_L, player_R):
 def draw(ball, player_L, player_R):
   WIN.fill(color_constants.BLACK)
   pygame.draw.rect(WIN, ball.color, ball)
-  pygame.draw.rect(WIN, player_L.color, player_L)
-  pygame.draw.rect(WIN, player_R.color, player_R)
+  player_L.draw_paddle(WIN)
+  player_L.draw_score(WIN)
+  player_R.draw_paddle(WIN)
+  # player_R.draw_score(WIN)
 
 def initialize():
   BALL_LENGTH=20
   BALL_START_X, BALL_START_Y = (WIN.get_width()- BALL_LENGTH) //2, (WIN.get_height() - BALL_LENGTH) // 2
-  PLAYER_WIDTH, PLAYER_HEIGHT = 50,90
+  PLAYER_WIDTH, PLAYER_HEIGHT = 20,120
   PLAYER_START_X, PLAYER_START_Y =  20, (WIN.get_height()-PLAYER_HEIGHT)//2
   ball = Ball(BALL_START_X, BALL_START_Y, BALL_LENGTH, BALL_LENGTH, color_constants.WHITE)
-  player_L = Paddle(PLAYER_START_X, PLAYER_START_Y, PLAYER_WIDTH, PLAYER_HEIGHT, color_constants.WHITE)
-  player_R = Paddle(WIN.get_width() - PLAYER_START_X - PLAYER_WIDTH, PLAYER_START_Y, PLAYER_WIDTH, PLAYER_HEIGHT, color_constants.WHITE)
-  return ball, player_L, player_R
+  textbox_L = Textbox(SCORE_FONT, color_constants.WHITE, "Dummy", WIDTH // 4, 20)
+  textbox_R = Textbox(SCORE_FONT, color_constants.WHITE, "Dummy", 3* WIDTH // 4, 20)
+  paddle_L = Paddle(PLAYER_START_X, PLAYER_START_Y, PLAYER_WIDTH, PLAYER_HEIGHT, color_constants.WHITE)
+  paddle_R = Paddle(WIN.get_width() - PLAYER_START_X - PLAYER_WIDTH, PLAYER_START_Y, PLAYER_WIDTH, PLAYER_HEIGHT, color_constants.WHITE)
+  return ball, paddle_L, paddle_R, textbox_L, textbox_R
 
 
 def main():
@@ -87,21 +124,27 @@ def main():
   game_started=False
   running = True
   FPS=60
-  ball,player_L,player_R=initialize()
+  ball,paddle_L,paddle_R, textbox_L, textbox_R=initialize()
+  player_L = Player(paddle_L, textbox_L)
+  player_R = Player(paddle_R, textbox_R)
   while running:
     clock.tick(FPS)
 
     for event in pygame.event.get():
       if event.type == pygame.QUIT:
         running=False
-      if event.type == GAME_OVER_EVENT:
-        ball,player_L,player_R=initialize()
+      if event.type == PLAYER_L_LOST_EVENT:
+        player_R.score += 1
+        # ball,paddle_L,paddle_R=initialize()
+      elif event.type == PLAYER_R_LOST_EVENT:
+        player_L.score += 1
+        # ball,paddle_L,paddle_R=initialize()
 
 
     keys_pressed=pygame.key.get_pressed()
-    handle_mov_player_left(keys_pressed, player_L)
-    handle_mov_player_right(keys_pressed, player_R)
-    handle_mov_ball(ball, player_L, player_R)
+    handle_mov_player_left(keys_pressed, paddle_L)
+    handle_mov_player_right(keys_pressed, paddle_R)
+    handle_mov_ball(ball, paddle_L, paddle_R)
 
 
 
