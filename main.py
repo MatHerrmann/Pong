@@ -14,15 +14,21 @@ PLAYER_R_LOST_EVENT = pygame.USEREVENT + 2
 
 class Ball(pygame.Rect):
   LENGTH=20
+  INIT_VX=2
+  INIT_VY=2
   START_X, START_Y = (SCREEN_WIDTH- LENGTH) //2, (SCREEN_HEIGHT - LENGTH) // 2
   def __init__(self, color, left=START_X, top=START_Y, width=LENGTH, height=LENGTH):
     super().__init__(left, top, width, height)
     self._start_left = left
     self._start_top = top
     self.color = color
+    self.vx=self.INIT_VX
+    self.vy=self.INIT_VY
 
   def restore_position(self):
     self.move_ip(self._start_left - self.x, self._start_top - self.y)
+    self.vx=self.INIT_VX
+    self.vy=self.INIT_VY
 
 
 class Player:
@@ -79,13 +85,11 @@ def handle_mov_player_right(keys_pressed, paddle_R):
   if keys_pressed[pygame.K_DOWN] and paddle_R.y + paddle_R.height + VY < SCREEN_HEIGHT:
     paddle_R.move_ip(0,VY)
 
-ball_VY, ball_VX = 2,2
 def handle_mov_ball(ball, player_L, player_R):
-  global ball_VX, ball_VY
-  if ball.x + ball.width + ball_VX > SCREEN_WIDTH:
+  if ball.x + ball.width + ball.vx > SCREEN_WIDTH:
     # Game lost
     pygame.event.post(pygame.event.Event(PLAYER_R_LOST_EVENT))
-  elif  ball.x + ball_VX < 0:
+  elif  ball.x + ball.vx < 0:
     pygame.event.post(pygame.event.Event(PLAYER_L_LOST_EVENT))
 
 
@@ -94,23 +98,23 @@ def handle_mov_ball(ball, player_L, player_R):
     player_R.sound.play()
     intersect_rectangle = ball.clip(player_R.paddle)
     if intersect_rectangle.width > intersect_rectangle.height:
-      ball_VY *= -1
+      ball.vy *= -1.1
     else:
-      ball_VX *= -1
+      ball.vx *= -1.1
 
   # Rebouncing with player left
   elif ball.colliderect(player_L.paddle):
     player_L.sound.play()
     intersect_rectangle = ball.clip(player_L.paddle)
     if intersect_rectangle.width > intersect_rectangle.height:
-      ball_VY *= -1
+      ball.vy *= -1.1
     else:
-      ball_VX *= -1
+      ball.vx *= -1.1
 
   # Rebouncing at screen
-  if ball.y + ball.height + ball_VY > SCREEN_HEIGHT or ball.y + ball_VY < 0:
-    ball_VY *= -1
-  ball.move_ip(ball_VX, ball_VY)
+  if ball.y + ball.height + ball.vy > SCREEN_HEIGHT or ball.y + ball.vy < 0:
+    ball.vy *= -1
+  ball.move_ip(ball.vx, ball.vy)
 
 def draw(ball, player_L, player_R):
   WIN.fill(color_constants.BLACK)
